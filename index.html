@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Dedale Task Manager — IT Operations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<style>
+:root{--navy:#141628;--navy-mid:#1a1d38;--accent:#cc2244;--accent-dim:#881630;--teal:#22ccdd;--bg:#141628;--surface:#222646;--surface2:#282c52;--border:#383d72;--border2:#484e8a;--text:#e4e8ff;--text2:#9aa2cc;--text3:#565e90;--green:#22cc88;--green-bg:#0a2a1a;--yellow:#d4a830;--yellow-bg:#2a1e00;--red:#cc2244;--red-bg:#2a0a14;--orange:#e07030;--orange-bg:#2a1200;--gold:#d4a830;--gold-light:#f0c848;--blue:#4488ff;--blue-light:#66aaff;--purple:#8866ff;--shadow-sm:0 0 16px rgba(68,136,255,0.08);--shadow:0 4px 24px rgba(68,136,255,0.12);--shadow-lg:0 8px 32px rgba(0,0,0,0.7);--radius:2px;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:16px;min-height:100vh}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:var(--navy)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:0}
+button{cursor:pointer;font-family:'Rajdhani',sans-serif}
+input,select,textarea{font-family:'Rajdhani',sans-serif;background:var(--navy-mid);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:var(--radius);font-size:15px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal)}
+label{display:block;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin:14px 0 5px}
+/* ---- Login screen ---- */
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100}
+.login-box{background:var(--surface);border:1px solid var(--border);padding:48px 56px;text-align:center;box-shadow:var(--shadow-lg)}
+.login-box h1{font-family:'Orbitron',monospace;font-size:22px;letter-spacing:3px;color:var(--text)}
+.login-box .brand-accent{color:var(--accent)}
+.login-box p{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--text3);margin:10px 0 28px}
+/* ---- Layout ---- */
+#app{display:none}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:230px;background:var(--navy-mid);border-right:1px solid var(--border);padding:20px 0;flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.side-brand{padding:0 22px 22px;border-bottom:1px solid var(--border)}
+.side-brand .logo{display:flex;align-items:center;gap:10px}
+.side-brand .logo-mark{width:30px;height:30px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-weight:900;font-size:15px}
+.side-brand h1{font-family:'Orbitron',monospace;font-size:15px;letter-spacing:2px}
+.side-brand h1 span{display:block;font-size:9px;letter-spacing:3px;color:var(--text2);font-weight:500}
+.side-brand .sub{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--accent);margin-top:8px}
+.side-section{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--text3);padding:20px 22px 8px}
+.side-nav{list-style:none}
+.side-nav button{display:flex;align-items:center;gap:11px;width:100%;background:none;border:none;border-left:3px solid transparent;color:var(--text2);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:1.5px;padding:11px 22px;text-align:left;text-transform:uppercase}
+.side-nav button:hover{color:var(--text);background:rgba(68,136,255,0.05)}
+.side-nav button.active{color:var(--text);background:var(--surface);border-left-color:var(--accent)}
+.side-foot{margin-top:auto;padding:16px 22px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text3);border-top:1px solid var(--border)}
+.main{flex:1;min-width:0}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--navy-mid);position:sticky;top:0;z-index:5}
+.topbar .page-title{border-left:3px solid var(--accent);padding-left:14px}
+.topbar .page-title h2{font-family:'Orbitron',monospace;font-size:17px;letter-spacing:2.5px;text-transform:uppercase}
+.topbar .page-title .crumb{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text3)}
+.topbar-right{display:flex;align-items:center;gap:14px}
+.userchip{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);padding:6px 14px 6px 6px}
+.userchip .avatar{width:30px;height:30px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-weight:700;font-size:12px}
+.userchip .uname{font-weight:700;font-size:13px;letter-spacing:.5px;line-height:1.1}
+.userchip .uemail{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text2)}
+.content{padding:26px 28px}
+/* ---- Buttons ---- */
+.btn{border:none;border-radius:var(--radius);font-weight:700;letter-spacing:1.5px;font-size:13px;padding:10px 18px;text-transform:uppercase;font-family:'Rajdhani',sans-serif}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--crimson-glow,#ff2255)}
+.btn-outline{background:none;border:1px solid var(--border2);color:var(--text2)}.btn-outline:hover{border-color:var(--teal);color:var(--teal)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-ghost{background:none;border:none;color:var(--text3);font-size:11px;letter-spacing:1px}.btn-ghost:hover{color:var(--accent)}
+/* ---- Dashboard stats ---- */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:26px}
+.stat{background:var(--surface);border:1px solid var(--border);padding:18px 20px;box-shadow:var(--shadow-sm)}
+.stat .k{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--text2);text-transform:uppercase}
+.stat .v{font-family:'Orbitron',monospace;font-size:30px;font-weight:700;margin-top:6px}
+.stat.s-todo .v{color:var(--blue-light)}.stat.s-prog .v{color:var(--teal)}.stat.s-wait .v{color:var(--gold)}.stat.s-done .v{color:var(--green)}.stat.s-due .v{color:var(--orange)}.stat.s-over .v{color:var(--accent)}
+/* ---- Kanban ---- */
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start}
+.kcol{background:var(--navy-mid);border:1px solid var(--border);min-height:220px}
+.kcol-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border)}
+.kcol-head .t{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase}
+.kcol-head .n{font-family:'Orbitron',monospace;font-size:13px;color:var(--text2)}
+.kcol.c-todo .t{color:var(--blue-light)}.kcol.c-prog .t{color:var(--teal)}.kcol.c-wait .t{color:var(--gold)}.kcol.c-done .t{color:var(--green)}
+.kcards{padding:10px;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--border2);padding:12px 13px;box-shadow:var(--shadow-sm)}
+.card.p-Low{border-left-color:var(--text3)}.card.p-Medium{border-left-color:var(--blue)}.card.p-High{border-left-color:var(--gold)}.card.p-Urgent{border-left-color:var(--accent)}
+.card .c-title{font-weight:700;font-size:15px;letter-spacing:.3px;line-height:1.25}
+.card .c-subject{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--teal);margin-top:3px}
+.card .c-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.tag{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;padding:3px 7px;border:1px solid var(--border2);color:var(--text2);text-transform:uppercase}
+.tag.t-hr{color:var(--purple);border-color:var(--purple)}
+.tag.t-due{color:var(--gold);border-color:var(--gold)}
+.tag.t-over{color:#fff;background:var(--accent);border-color:var(--accent)}
+.tag.t-pr-Urgent{color:var(--accent);border-color:var(--accent)}.tag.t-pr-High{color:var(--gold);border-color:var(--gold)}
+.subbar{height:4px;background:var(--navy);margin-top:10px;position:relative}
+.subbar i{position:absolute;left:0;top:0;bottom:0;background:var(--teal)}
+.sublabel{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text3);margin-top:4px;letter-spacing:1px}
+.card .c-actions{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}
+.cbtn{background:none;border:1px solid var(--border);color:var(--text2);font-family:'Share Tech Mono',monospace;font-size:10px;padding:4px 8px;letter-spacing:.5px}
+.cbtn:hover{border-color:var(--teal);color:var(--teal)}
+.cbtn.danger:hover{border-color:var(--accent);color:var(--accent)}
+.empty{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text3);text-align:center;padding:22px 8px;letter-spacing:1px}
+/* ---- Modal ---- */
+.modal-bg{position:fixed;inset:0;background:rgba(10,12,24,.82);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow-y:auto;padding:40px 16px}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);width:600px;max-width:100%;box-shadow:var(--shadow-lg)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 22px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-family:'Orbitron',monospace;font-size:14px;letter-spacing:2px;text-transform:uppercase}
+.modal-body{padding:6px 22px 22px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--border)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.subtask-list{list-style:none;margin-top:6px}
+.subtask-list li{display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--navy-mid);border:1px solid var(--border);margin-bottom:6px}
+.subtask-list input[type=checkbox]{width:15px;height:15px;accent-color:var(--teal)}
+.subtask-list .st-label{flex:1;font-size:14px}
+.subtask-list li.done .st-label{color:var(--text3);text-decoration:line-through}
+.subtask-list .st-del{background:none;border:none;color:var(--text3);font-size:14px}
+.subtask-list .st-del:hover{color:var(--accent)}
+.addsub{display:flex;gap:8px;margin-top:4px}
+/* ---- Detail view list (dashboard recent) ---- */
+.tbl{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border)}
+.tbl th{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--text2);text-transform:uppercase;text-align:left;padding:11px 14px;border-bottom:1px solid var(--border);background:var(--navy-mid)}
+.tbl td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:14px}
+.tbl tr:last-child td{border-bottom:none}
+/* ---- Toast ---- */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--teal);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:1px;padding:13px 20px;display:none;z-index:99;box-shadow:var(--shadow-lg)}
+#toast.err{border-color:var(--accent)}
+@media(max-width:1100px){.board{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.layout{flex-direction:column}.sidebar{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center}.side-foot{display:none}.board{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h1>DEDALE <span class="brand-accent">TASK MANAGER</span></h1>
+    <p>INTEL-TM // IT OPERATIONS</p>
+    <button class="btn btn-primary" onclick="signIn()">Sign in with Microsoft</button>
+    <div id="login-status" style="margin-top:16px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text3)"></div>
+  </div>
+</div>
+
+<div id="app">
+<div class="layout">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="logo"><div class="logo-mark">D</div>
+        <h1>DEDALE<span>INTELLIGENCE</span></h1></div>
+      <div class="sub">INTEL-TM // IT TASK MANAGER</div>
+    </div>
+    <div class="side-section">OVERVIEW</div>
+    <ul class="side-nav">
+      <li><button id="nav-dashboard" class="active" onclick="showView('dashboard')">▦ Dashboard</button></li>
+      <li><button id="nav-board" onclick="showView('board')">▤ Task Board</button></li>
+    </ul>
+    <div class="side-section">ACTIONS</div>
+    <ul class="side-nav">
+      <li><button onclick="openTaskModal()">+ New Task</button></li>
+      <li><button onclick="loadTasks(true)">⟳ Refresh</button></li>
+    </ul>
+    <div class="side-foot" id="side-status">CONNECTING…</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title">
+        <h2 id="page-h2">DASHBOARD</h2>
+        <div class="crumb">DEDALE INTELLIGENCE // IT OPERATIONS</div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-primary" onclick="openTaskModal()">+ Add Task</button>
+        <div class="userchip"><div class="avatar" id="u-avatar">–</div>
+          <div><div class="uname" id="u-name">…</div><div class="uemail" id="u-email"></div></div></div>
+        <button class="btn-ghost" onclick="signOut()" title="Sign out">⏻</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- DASHBOARD -->
+      <section id="view-dashboard">
+        <div class="stat-grid">
+          <div class="stat s-todo"><div class="k">To Do</div><div class="v" id="st-todo">0</div></div>
+          <div class="stat s-prog"><div class="k">In Progress</div><div class="v" id="st-prog">0</div></div>
+          <div class="stat s-wait"><div class="k">Waiting</div><div class="v" id="st-wait">0</div></div>
+          <div class="stat s-due"><div class="k">Due Today</div><div class="v" id="st-due">0</div></div>
+          <div class="stat s-over"><div class="k">Overdue</div><div class="v" id="st-over">0</div></div>
+          <div class="stat s-done"><div class="k">Done (7d)</div><div class="v" id="st-done">0</div></div>
+        </div>
+        <table class="tbl"><thead><tr><th>Task</th><th>Subject</th><th>Type</th><th>Priority</th><th>Status</th><th>Due</th></tr></thead>
+        <tbody id="recent-rows"><tr><td colspan="6" class="empty">No tasks yet — create your first one.</td></tr></tbody></table>
+      </section>
+
+      <!-- BOARD -->
+      <section id="view-board" style="display:none">
+        <div class="board">
+          <div class="kcol c-todo"><div class="kcol-head"><span class="t">To Do</span><span class="n" id="n-todo">0</span></div><div class="kcards" id="col-todo"></div></div>
+          <div class="kcol c-prog"><div class="kcol-head"><span class="t">In Progress</span><span class="n" id="n-prog">0</span></div><div class="kcards" id="col-prog"></div></div>
+          <div class="kcol c-wait"><div class="kcol-head"><span class="t">Waiting</span><span class="n" id="n-wait">0</span></div><div class="kcards" id="col-wait"></div></div>
+          <div class="kcol c-done"><div class="kcol-head"><span class="t">Done</span><span class="n" id="n-done">0</span></div><div class="kcards" id="col-done"></div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- TASK MODAL -->
+<div class="modal-bg" id="task-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="tm-title">New Task</h3><button class="btn-ghost" onclick="closeTaskModal()">✕</button></div>
+    <div class="modal-body">
+      <label>Task Title *</label>
+      <input id="f-title" placeholder="e.g. Account setup for new hire">
+      <div class="grid2">
+        <div><label>Requester Dept</label><select id="f-dept"><option>HR</option></select></div>
+        <div><label>Request Type</label><select id="f-type" onchange="onTypeChange()">
+          <option>New Hire Setup</option><option>Account Creation</option><option>Access Request</option><option>Offboarding</option><option>Other</option></select></div>
+      </div>
+      <label>Subject / Employee</label>
+      <input id="f-subject" placeholder="e.g. DACILLO Princess">
+      <label>Details</label>
+      <textarea id="f-details" rows="3" placeholder="What was requested, context, links…"></textarea>
+      <div class="grid2">
+        <div><label>Priority</label><select id="f-priority"><option>Low</option><option selected>Medium</option><option>High</option><option>Urgent</option></select></div>
+        <div><label>Due Date</label><input type="date" id="f-due"></div>
+      </div>
+      <label>Subtasks / Checklist</label>
+      <ul class="subtask-list" id="f-subtasks"></ul>
+      <div class="addsub"><input id="f-newsub" placeholder="Add a subtask…" onkeydown="if(event.key==='Enter')addSubtask()"><button class="btn btn-outline btn-sm" onclick="addSubtask()">+ Add</button></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeTaskModal()">Cancel</button>
+      <button class="btn btn-primary" id="tm-save" onclick="saveTask()">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+/* ============ DEDALE IT TASK MANAGER — BUILD STAMP ============ */
+const BUILD='BUILD 2026-06-12a';console.log('%c'+BUILD,'color:#22cc88;font-weight:bold');
+
+/* ============ CONFIG (proven Service Desk pattern) ============ */
+const GRAPH='https://graph.microsoft.com/v1.0';
+const SP_SITE_PATH='softwareclub.sharepoint.com:/sites/ITServiceDesk';
+const SP_LIST_NAME='ITTasks';
+const SCOPES=['Sites.ReadWrite.All','User.Read'];
+const msalApp=new msal.PublicClientApplication({
+  auth:{clientId:'efcad5dc-5a65-4e5a-906b-54db03b58824',
+        authority:'https://login.microsoftonline.com/115d6eac-9c52-4e39-9c4c-f8d77ede8a9d',
+        redirectUri:window.location.origin+window.location.pathname},
+  cache:{cacheLocation:'localStorage'}
+});
+
+let account=null,siteId=null,tasks=[],editingId=null,modalSubtasks=[];
+
+/* ============ AUTH ============ */
+async function getToken(){
+  try{const r=await msalApp.acquireTokenSilent({scopes:SCOPES,account});return r.accessToken;}
+  catch(e){const r=await msalApp.acquireTokenPopup({scopes:SCOPES});account=r.account;return r.accessToken;}
+}
+async function signIn(){
+  document.getElementById('login-status').textContent='SIGNING IN…';
+  try{
+    const r=await msalApp.loginPopup({scopes:SCOPES});
+    account=r.account;await boot();
+  }catch(e){console.error(e);document.getElementById('login-status').textContent='SIGN-IN FAILED — '+(e.errorCode||e.message);}
+}
+function signOut(){msalApp.logoutPopup({account}).catch(()=>{});account=null;location.reload();}
+
+/* ============ GRAPH FETCH (auto-retry on 401 token expiry) ============ */
+async function gfetch(url,opts={},retry=true){
+  const token=await getToken();
+  opts.headers=Object.assign({},opts.headers,{Authorization:'Bearer '+token});
+  const res=await fetch(url,opts);
+  if(res.status===401&&retry){return gfetch(url,opts,false);}
+  return res;
+}
+
+/* ============ SITE + LIST (lookup only — list created manually) ============ */
+async function resolveSiteId(){
+  if(siteId)return siteId;
+  const res=await gfetch(GRAPH+'/sites/'+SP_SITE_PATH);
+  if(!res.ok)throw new Error('Cannot resolve site ('+res.status+')');
+  const j=await res.json();siteId=j.id;return siteId;
+}
+async function ensureList(){
+  await resolveSiteId();
+  const res=await gfetch(GRAPH+'/sites/'+siteId+'/lists/'+SP_LIST_NAME+'?$select=id,name');
+  if(!res.ok)throw new Error('List "'+SP_LIST_NAME+'" not found ('+res.status+'). Create it manually in SharePoint first.');
+  return true;
+}
+
+/* ============ TASK CRUD ============ */
+function fieldsFromItem(it){
+  const f=it.fields||{};
+  let subs=[];try{subs=f.SubtasksJson?JSON.parse(f.SubtasksJson):[];}catch(e){subs=[];}
+  return {id:it.id,title:f.Title||'',dept:f.RequesterDept||'HR',type:f.RequestType||'Other',
+    subject:f.Subject||'',details:f.Details||'',priority:f.Priority||'Medium',
+    status:f.TaskStatus||'To Do',due:f.DueDate?f.DueDate.substring(0,10):'',
+    completed:f.CompletedDate?f.CompletedDate.substring(0,10):'',subtasks:subs,
+    created:it.createdDateTime||''};
+}
+async function loadTasks(showToast){
+  setStatus('LOADING…');
+  try{
+    await ensureList();
+    let url=GRAPH+'/sites/'+siteId+'/lists/'+SP_LIST_NAME+'/items?expand=fields&$top=500';
+    let all=[];
+    while(url){
+      const res=await gfetch(url);
+      if(!res.ok)throw new Error('Load failed ('+res.status+')');
+      const j=await res.json();all=all.concat(j.value||[]);url=j['@odata.nextLink']||null;
+    }
+    tasks=all.map(fieldsFromItem);
+    renderAll();setStatus('● ONLINE — '+tasks.length+' tasks');
+    if(showToast)toast('Tasks refreshed ✓');
+  }catch(e){console.error(e);setStatus('⚠ '+e.message);toast(e.message,true);}
+}
+function taskBody(){
+  return {fields:{
+    Title:val('f-title'),RequesterDept:val('f-dept'),RequestType:val('f-type'),
+    Subject:val('f-subject'),Details:val('f-details'),Priority:val('f-priority'),
+    TaskStatus:editingId?(tasks.find(t=>t.id===editingId)||{}).status||'To Do':'To Do',
+    DueDate:val('f-due')||null,SubtasksJson:JSON.stringify(modalSubtasks)
+  }};
+}
+async function saveTask(){
+  if(!val('f-title')){toast('Title is required',true);return;}
+  const btn=document.getElementById('tm-save');btn.disabled=true;btn.textContent='SAVING…';
+  try{
+    await ensureList();
+    const body=taskBody();
+    let res;
+    if(editingId){
+      res=await gfetch(GRAPH+'/sites/'+siteId+'/lists/'+SP_LIST_NAME+'/items/'+editingId+'/fields',
+        {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body.fields)});
+    }else{
+      res=await gfetch(GRAPH+'/sites/'+siteId+'/lists/'+SP_LIST_NAME+'/items',
+        {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    }
+    if(!res.ok){const t=await res.text();throw new Error('Save failed ('+res.status+'): '+t.substring(0,120));}
+    closeTaskModal();await loadTasks();toast(editingId?'Task updated ✓':'Task created ✓');
+  }catch(e){console.error(e);toast(e.message,true);}
+  btn.disabled=false;btn.textContent='Save Task';
+}
+async function setTaskStatus(id,status){
+  try{
+    const patch={TaskStatus:status};
+    patch.CompletedDate=(status==='Done')?new Date().toISOString().substring(0,10):null;
+    const res=await gfetch(GRAPH+'/sites/'+siteId+'/lists/'+SP_LIST_NAME+'/items/'+id+'/fields',
+      {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+    if(!res.ok)throw new Error('Update failed ('+res.status+')');
+    await loadTasks();
+  }catch(e){console.error(e);toast(e.message,true);}
+}
+async function deleteTask(id){
+  if(!confirm('Delete this task permanently?'))return;
+  try{
+    const res=await gfetch(GRAPH+'/sites/'+siteId+'/lists/'+SP_LIST_NAME+'/items/'+id,{method:'DELETE'});
+    if(!res.ok&&res.status!==204)throw new Error('Delete failed ('+res.status+')');
+    await loadTasks();toast('Task deleted ✓');
+  }catch(e){console.error(e);toast(e.message,true);}
+}
+async function toggleSubtask(id,idx){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  t.subtasks[idx].done=!t.subtasks[idx].done;
+  try{
+    await gfetch(GRAPH+'/sites/'+siteId+'/lists/'+SP_LIST_NAME+'/items/'+id+'/fields',
+      {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({SubtasksJson:JSON.stringify(t.subtasks)})});
+    renderAll();
+  }catch(e){toast('Subtask sync failed',true);}
+}
+
+/* ============ NEW HIRE / OFFBOARDING TEMPLATES ============ */
+const TEMPLATES={
+ 'New Hire Setup':['Create M365 account + assign license','Set up MFA / Microsoft Authenticator','Create Bitwarden account & collections','Create Claude account / group assignment','Assign laptop + record in Inventory app','Install TextExpander + standard software','Add to Teams channels & distribution lists','Add to Airtable / HR records'],
+ 'Offboarding':['Disable M365 account & revoke sessions','Remove licenses','Remove from Bitwarden collections','Remove Claude access','Reclaim laptop + update Inventory app','Remove from Teams & distribution lists','Archive mailbox / transfer OneDrive']
+};
+function onTypeChange(){
+  if(editingId)return; /* don't overwrite checklist while editing */
+  const t=val('f-type');
+  modalSubtasks=(TEMPLATES[t]||[]).map(s=>({label:s,done:false}));
+  renderModalSubtasks();
+}
+
+/* ============ MODAL ============ */
+function openTaskModal(task){
+  editingId=task?task.id:null;
+  document.getElementById('tm-title').textContent=task?'Edit Task':'New Task';
+  setVal('f-title',task?task.title:'');setVal('f-dept',task?task.dept:'HR');
+  setVal('f-type',task?task.type:'New Hire Setup');setVal('f-subject',task?task.subject:'');
+  setVal('f-details',task?task.details:'');setVal('f-priority',task?task.priority:'Medium');
+  setVal('f-due',task?task.due:'');
+  modalSubtasks=task?JSON.parse(JSON.stringify(task.subtasks)):(TEMPLATES['New Hire Setup'].map(s=>({label:s,done:false})));
+  renderModalSubtasks();
+  document.getElementById('task-modal').classList.add('open');
+}
+function closeTaskModal(){document.getElementById('task-modal').classList.remove('open');editingId=null;}
+function renderModalSubtasks(){
+  const ul=document.getElementById('f-subtasks');ul.innerHTML='';
+  modalSubtasks.forEach((s,i)=>{
+    const li=document.createElement('li');if(s.done)li.className='done';
+    const cb=document.createElement('input');cb.type='checkbox';cb.checked=!!s.done;
+    cb.onchange=()=>{modalSubtasks[i].done=cb.checked;renderModalSubtasks();};
+    const sp=document.createElement('span');sp.className='st-label';sp.textContent=s.label;
+    const del=document.createElement('button');del.className='st-del';del.textContent='✕';
+    del.onclick=()=>{modalSubtasks.splice(i,1);renderModalSubtasks();};
+    li.append(cb,sp,del);ul.appendChild(li);
+  });
+}
+function addSubtask(){
+  const v=val('f-newsub').trim();if(!v)return;
+  modalSubtasks.push({label:v,done:false});setVal('f-newsub','');renderModalSubtasks();
+}
+
+/* ============ COPY AS DAILY LOG ============ */
+const CAT_MAP={'New Hire Setup':'Account Management','Account Creation':'Account Management','Access Request':'Access Management','Offboarding':'Account Management','Other':'Troubleshooting'};
+function copyDailyLog(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  const cat=CAT_MAP[t.type]||'Troubleshooting';
+  const det=(t.details||'').trim().replace(/\s+/g,' ');
+  let line='**'+cat+':** '+(t.subject||t.title)+' — '+t.title.charAt(0).toLowerCase()+t.title.slice(1);
+  if(det)line+='; '+det;
+  if(t.status==='Done')line+=' — completed';
+  navigator.clipboard.writeText(line).then(()=>toast('Daily log line copied ✓')).catch(()=>toast('Copy failed',true));
+}
+
+/* ============ RENDER ============ */
+const STATUS_COLS={'To Do':'col-todo','In Progress':'col-prog','Waiting':'col-wait','Done':'col-done'};
+const STATUS_ORDER=['To Do','In Progress','Waiting','Done'];
+function todayStr(){return new Date().toISOString().substring(0,10);}
+function renderAll(){renderStats();renderBoard();renderRecent();}
+function renderStats(){
+  const td=todayStr();
+  const c={todo:0,prog:0,wait:0,done7:0,due:0,over:0};
+  const wk=new Date(Date.now()-7*86400000).toISOString().substring(0,10);
+  tasks.forEach(t=>{
+    if(t.status==='To Do')c.todo++;if(t.status==='In Progress')c.prog++;if(t.status==='Waiting')c.wait++;
+    if(t.status==='Done'&&t.completed>=wk)c.done7++;
+    if(t.status!=='Done'&&t.due){if(t.due===td)c.due++;else if(t.due<td)c.over++;}
+  });
+  setText('st-todo',c.todo);setText('st-prog',c.prog);setText('st-wait',c.wait);
+  setText('st-done',c.done7);setText('st-due',c.due);setText('st-over',c.over);
+}
+function makeCard(t){
+  const td=todayStr();
+  const card=document.createElement('div');card.className='card p-'+t.priority;
+  const h=document.createElement('div');h.className='c-title';h.textContent=t.title;card.appendChild(h);
+  if(t.subject){const s=document.createElement('div');s.className='c-subject';s.textContent=t.subject;card.appendChild(s);}
+  const meta=document.createElement('div');meta.className='c-meta';
+  meta.innerHTML='<span class="tag t-hr">'+esc(t.dept)+'</span><span class="tag">'+esc(t.type)+'</span><span class="tag t-pr-'+t.priority+'">'+t.priority+'</span>';
+  if(t.due&&t.status!=='Done'){
+    const d=document.createElement('span');
+    d.className='tag '+(t.due<td?'t-over':'t-due');d.textContent=(t.due<td?'OVERDUE ':'DUE ')+t.due;meta.appendChild(d);
+  }
+  card.appendChild(meta);
+  if(t.subtasks.length){
+    const done=t.subtasks.filter(s=>s.done).length;
+    const bar=document.createElement('div');bar.className='subbar';
+    bar.innerHTML='<i style="width:'+Math.round(done/t.subtasks.length*100)+'%"></i>';card.appendChild(bar);
+    const lbl=document.createElement('div');lbl.className='sublabel';lbl.textContent='CHECKLIST '+done+'/'+t.subtasks.length;card.appendChild(lbl);
+    const ul=document.createElement('ul');ul.className='subtask-list';ul.style.marginTop='8px';
+    t.subtasks.forEach((s,i)=>{
+      const li=document.createElement('li');if(s.done)li.className='done';
+      const cb=document.createElement('input');cb.type='checkbox';cb.checked=!!s.done;cb.onchange=()=>toggleSubtask(t.id,i);
+      const sp=document.createElement('span');sp.className='st-label';sp.style.fontSize='13px';sp.textContent=s.label;
+      li.append(cb,sp);ul.appendChild(li);
+    });
+    card.appendChild(ul);
+  }
+  const act=document.createElement('div');act.className='c-actions';
+  const idx=STATUS_ORDER.indexOf(t.status);
+  if(idx>0){const b=document.createElement('button');b.className='cbtn';b.textContent='◀ '+STATUS_ORDER[idx-1];b.onclick=()=>setTaskStatus(t.id,STATUS_ORDER[idx-1]);act.appendChild(b);}
+  if(idx<3){const b=document.createElement('button');b.className='cbtn';b.textContent=STATUS_ORDER[idx+1]+' ▶';b.onclick=()=>setTaskStatus(t.id,STATUS_ORDER[idx+1]);act.appendChild(b);}
+  const be=document.createElement('button');be.className='cbtn';be.textContent='EDIT';be.onclick=()=>openTaskModal(t);act.appendChild(be);
+  const bl=document.createElement('button');bl.className='cbtn';bl.textContent='⧉ LOG';bl.title='Copy as Daily Log line';bl.onclick=()=>copyDailyLog(t.id);act.appendChild(bl);
+  const bd=document.createElement('button');bd.className='cbtn danger';bd.textContent='DEL';bd.onclick=()=>deleteTask(t.id);act.appendChild(bd);
+  card.appendChild(act);
+  return card;
+}
+function renderBoard(){
+  const counts={'To Do':0,'In Progress':0,'Waiting':0,'Done':0};
+  Object.values(STATUS_COLS).forEach(id=>document.getElementById(id).innerHTML='');
+  const sorted=[...tasks].sort((a,b)=>(a.due||'9999')<(b.due||'9999')?-1:1);
+  sorted.forEach(t=>{
+    counts[t.status]=(counts[t.status]||0)+1;
+    const col=document.getElementById(STATUS_COLS[t.status]||'col-todo');
+    col.appendChild(makeCard(t));
+  });
+  Object.entries(STATUS_COLS).forEach(([st,id])=>{
+    if(!counts[st])document.getElementById(id).innerHTML='<div class="empty">— EMPTY —</div>';
+  });
+  setText('n-todo',counts['To Do']);setText('n-prog',counts['In Progress']);
+  setText('n-wait',counts['Waiting']);setText('n-done',counts['Done']);
+}
+function renderRecent(){
+  const tb=document.getElementById('recent-rows');tb.innerHTML='';
+  const open=[...tasks].filter(t=>t.status!=='Done').sort((a,b)=>(a.due||'9999')<(b.due||'9999')?-1:1).slice(0,10);
+  if(!open.length){tb.innerHTML='<tr><td colspan="6" class="empty">No open tasks — all clear ✓</td></tr>';return;}
+  open.forEach(t=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td><b>'+esc(t.title)+'</b></td><td style="font-family:\'Share Tech Mono\',monospace;font-size:12px;color:var(--teal)">'+esc(t.subject)+'</td><td>'+esc(t.type)+'</td><td><span class="tag t-pr-'+t.priority+'">'+t.priority+'</span></td><td>'+esc(t.status)+'</td><td>'+esc(t.due||'—')+'</td>';
+    tb.appendChild(tr);
+  });
+}
+
+/* ============ VIEW SWITCHING + HELPERS ============ */
+function showView(v){
+  document.getElementById('view-dashboard').style.display=v==='dashboard'?'':'none';
+  document.getElementById('view-board').style.display=v==='board'?'':'none';
+  document.getElementById('nav-dashboard').classList.toggle('active',v==='dashboard');
+  document.getElementById('nav-board').classList.toggle('active',v==='board');
+  document.getElementById('page-h2').textContent=v==='dashboard'?'DASHBOARD':'TASK BOARD';
+}
+function val(id){return document.getElementById(id).value;}
+function setVal(id,v){document.getElementById(id).value=v;}
+function setText(id,v){document.getElementById(id).textContent=v;}
+function setStatus(s){document.getElementById('side-status').textContent=s;}
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML;}
+let toastTimer=null;
+function toast(msg,err){
+  const t=document.getElementById('toast');t.textContent=msg;t.className=err?'err':'';
+  t.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display='none',3500);
+}
+
+/* ============ BOOT ============ */
+async function boot(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  const name=account.name||account.username;
+  setText('u-name',name);setText('u-email',account.username);
+  setText('u-avatar',name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase());
+  await loadTasks();
+}
+(async function init(){
+  await msalApp.initialize();
+  const accs=msalApp.getAllAccounts();
+  if(accs.length){account=accs[0];boot();}
+})();
+</script>
+</body>
+</html>
