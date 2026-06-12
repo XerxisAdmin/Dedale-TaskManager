@@ -116,6 +116,13 @@ label{display:block;font-family:'Share Tech Mono',monospace;font-size:11px;lette
 /* ---- Toast ---- */
 #toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--teal);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:1px;padding:13px 20px;display:none;z-index:99;box-shadow:var(--shadow-lg)}
 #toast.err{border-color:var(--accent)}
+.dt-tags{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 4px}
+.dt-field{background:var(--navy-mid);border:1px solid var(--border);padding:10px 12px;font-size:14px;line-height:1.5;white-space:pre-wrap;margin-top:4px}
+.notes-box{background:var(--navy-mid);border:1px solid var(--border);padding:6px;max-height:230px;overflow-y:auto;margin-top:4px}
+.note-item{padding:8px 10px;border-left:2px solid var(--teal);background:var(--surface);margin-bottom:6px}
+.note-item:last-child{margin-bottom:0}
+.note-meta{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--text3);text-transform:uppercase}
+.note-text{font-size:14px;line-height:1.45;margin-top:3px;white-space:pre-wrap}
 @media(max-width:1100px){.board{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.layout{flex-direction:column}.sidebar{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center}.side-foot{display:none}.board{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
 </style>
@@ -226,10 +233,23 @@ label{display:block;font-family:'Share Tech Mono',monospace;font-size:11px;lette
   </div>
 </div>
 
+<!-- TASK DETAIL MODAL -->
+<div class="modal-bg" id="detail-modal">
+  <div class="modal" style="width:680px">
+    <div class="modal-head"><h3 id="dt-title">Task Detail</h3><button class="btn-ghost" onclick="closeDetail()">✕</button></div>
+    <div class="modal-body" id="dt-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeDetail()">Close</button>
+      <button class="btn btn-outline" id="dt-edit" >Edit Task</button>
+      <button class="btn btn-primary" id="dt-log">⧉ Copy as Daily Log</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script>
 /* ============ DEDALE IT TASK MANAGER — BUILD STAMP ============ */
-const BUILD='BUILD 2026-06-12d';console.log('%c'+BUILD,'color:#22cc88;font-weight:bold');
+const BUILD='BUILD 2026-06-12e';console.log('%c'+BUILD,'color:#22cc88;font-weight:bold');
 
 /* ============ CONFIG (proven Service Desk pattern) ============ */
 const GRAPH='https://graph.microsoft.com/v1.0';
@@ -292,10 +312,11 @@ async function ensureList(){
 function fieldsFromItem(it){
   const f=it.fields||{};
   let subs=[];try{subs=f.SubtasksJson?JSON.parse(f.SubtasksJson):[];}catch(e){subs=[];}
+  let notes=[];try{notes=f.NotesLog?JSON.parse(f.NotesLog):[];}catch(e){notes=[];}
   return {id:it.id,title:f.Title||'',dept:f.RequesterDept||'HR',type:f.RequestType||'Other',
     subject:f.Subject||'',details:f.Details||'',priority:f.Priority||'Medium',
     status:f.TaskStatus||'To Do',due:f.DueDate?f.DueDate.substring(0,10):'',
-    completed:f.CompletedDate?f.CompletedDate.substring(0,10):'',subtasks:subs,
+    completed:f.CompletedDate?f.CompletedDate.substring(0,10):'',subtasks:subs,notes:notes,
     created:it.createdDateTime||''};
 }
 async function loadTasks(showToast){
@@ -315,11 +336,13 @@ async function loadTasks(showToast){
   }catch(e){console.error(e);setStatus('⚠ '+e.message);toast(e.message,true);}
 }
 function taskBody(){
+  const existing=editingId?tasks.find(t=>t.id===editingId):null;
   return {fields:{
     Title:val('f-title'),RequesterDept:val('f-dept'),RequestType:val('f-type'),
     Subject:val('f-subject'),Details:val('f-details'),Priority:val('f-priority'),
-    TaskStatus:editingId?(tasks.find(t=>t.id===editingId)||{}).status||'To Do':'To Do',
-    DueDate:val('f-due')||null,SubtasksJson:JSON.stringify(modalSubtasks)
+    TaskStatus:existing?existing.status||'To Do':'To Do',
+    DueDate:val('f-due')||null,SubtasksJson:JSON.stringify(modalSubtasks),
+    NotesLog:JSON.stringify(existing?existing.notes||[]:[])
   }};
 }
 async function saveTask(){
@@ -411,7 +434,54 @@ function addSubtask(){
   modalSubtasks.push({label:v,done:false});setVal('f-newsub','');renderModalSubtasks();
 }
 
-/* ============ COPY AS DAILY LOG ============ */
+/* ============ TASK DETAIL VIEW + NOTES ============ */
+let detailId=null;
+function openDetail(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  detailId=id;
+  document.getElementById('dt-title').textContent=t.title;
+  const td=todayStr();
+  const dueTag=t.due?('<span class="tag '+(t.due<td&&t.status!=='Done'?'t-over':'t-due')+'">'+(t.due<td&&t.status!=='Done'?'OVERDUE ':'DUE ')+t.due+'</span>'):'';
+  let subHtml='';
+  if(t.subtasks.length){
+    const done=t.subtasks.filter(s=>s.done).length;
+    subHtml='<label>Checklist '+done+'/'+t.subtasks.length+'</label><ul class="subtask-list">'+
+      t.subtasks.map((s,i)=>'<li class="'+(s.done?'done':'')+'"><input type="checkbox" '+(s.done?'checked':'')+' onchange="toggleSubtask(\''+t.id+'\','+i+');setTimeout(()=>openDetail(\''+t.id+'\'),300)"><span class="st-label" style="font-size:14px">'+esc(s.label)+'</span></li>').join('')+'</ul>';
+  }
+  const notesHtml=(t.notes&&t.notes.length)?
+    t.notes.slice().reverse().map(n=>'<div class="note-item"><div class="note-meta">'+esc(n.ts)+'</div><div class="note-text">'+esc(n.text)+'</div></div>').join(''):
+    '<div class="empty" style="text-align:left;padding:8px 0">No notes yet.</div>';
+  document.getElementById('dt-body').innerHTML=
+    '<div class="dt-tags">'+
+      '<span class="tag t-hr">'+esc(t.dept)+'</span>'+
+      '<span class="tag">'+esc(t.type)+'</span>'+
+      '<span class="tag t-pr-'+t.priority+'">'+t.priority+'</span>'+
+      '<span class="tag">'+esc(t.status)+'</span>'+dueTag+
+    '</div>'+
+    (t.subject?'<label>Subject / Employee</label><div class="dt-field" style="color:var(--teal);font-family:\'Share Tech Mono\',monospace">'+esc(t.subject)+'</div>':'')+
+    '<label>Details</label><div class="dt-field">'+(t.details?esc(t.details):'<span style="color:var(--text3)">—</span>')+'</div>'+
+    subHtml+
+    '<label>Notes Log</label><div class="notes-box">'+notesHtml+'</div>'+
+    '<div class="addsub"><input id="dt-newnote" placeholder="Add a note…" onkeydown="if(event.key===\'Enter\')addNote()"><button class="btn btn-outline btn-sm" onclick="addNote()">+ Add Note</button></div>';
+  document.getElementById('dt-edit').onclick=()=>{closeDetail();openTaskModal(t);};
+  document.getElementById('dt-log').onclick=()=>copyDailyLog(t.id);
+  document.getElementById('detail-modal').classList.add('open');
+}
+function closeDetail(){document.getElementById('detail-modal').classList.remove('open');detailId=null;}
+async function addNote(){
+  const inp=document.getElementById('dt-newnote');const txt=inp.value.trim();if(!txt||!detailId)return;
+  const t=tasks.find(x=>x.id===detailId);if(!t)return;
+  const stamp=new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  t.notes=t.notes||[];t.notes.push({ts:stamp,text:txt});
+  inp.value='';
+  try{
+    await gfetch(GRAPH+'/sites/'+siteId+'/lists/'+SP_LIST_NAME+'/items/'+t.id+'/fields',
+      {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({NotesLog:JSON.stringify(t.notes)})});
+    openDetail(t.id);toast('Note added ✓');
+  }catch(e){console.error(e);toast('Note save failed',true);}
+}
+
+
 const CAT_MAP={'New Hire Setup':'Account Management','Account Creation':'Account Management','Access Request':'Access Management','Offboarding':'Account Management','Other':'Troubleshooting'};
 function copyDailyLog(id){
   const t=tasks.find(x=>x.id===id);if(!t)return;
@@ -443,7 +513,7 @@ function renderStats(){
 function makeCard(t){
   const td=todayStr();
   const card=document.createElement('div');card.className='card p-'+t.priority;
-  const h=document.createElement('div');h.className='c-title';h.textContent=t.title;card.appendChild(h);
+  const h=document.createElement('div');h.className='c-title';h.textContent=t.title;h.style.cursor='pointer';h.title='Click for details';h.onclick=()=>openDetail(t.id);card.appendChild(h);
   if(t.subject){const s=document.createElement('div');s.className='c-subject';s.textContent=t.subject;card.appendChild(s);}
   const meta=document.createElement('div');meta.className='c-meta';
   meta.innerHTML='<span class="tag t-hr">'+esc(t.dept)+'</span><span class="tag">'+esc(t.type)+'</span><span class="tag t-pr-'+t.priority+'">'+t.priority+'</span>';
@@ -467,6 +537,7 @@ function makeCard(t){
     card.appendChild(ul);
   }
   const act=document.createElement('div');act.className='c-actions';
+  const bv=document.createElement('button');bv.className='cbtn';bv.textContent='VIEW';bv.onclick=()=>openDetail(t.id);act.appendChild(bv);
   const idx=STATUS_ORDER.indexOf(t.status);
   if(idx>0){const b=document.createElement('button');b.className='cbtn';b.textContent='◀ '+STATUS_ORDER[idx-1];b.onclick=()=>setTaskStatus(t.id,STATUS_ORDER[idx-1]);act.appendChild(b);}
   if(idx<3){const b=document.createElement('button');b.className='cbtn';b.textContent=STATUS_ORDER[idx+1]+' ▶';b.onclick=()=>setTaskStatus(t.id,STATUS_ORDER[idx+1]);act.appendChild(b);}
@@ -496,7 +567,7 @@ function renderRecent(){
   const open=[...tasks].filter(t=>t.status!=='Done').sort((a,b)=>(a.due||'9999')<(b.due||'9999')?-1:1).slice(0,10);
   if(!open.length){tb.innerHTML='<tr><td colspan="6" class="empty">No open tasks — all clear ✓</td></tr>';return;}
   open.forEach(t=>{
-    const tr=document.createElement('tr');
+    const tr=document.createElement('tr');tr.style.cursor='pointer';tr.title='Click for details';tr.onclick=()=>openDetail(t.id);
     tr.innerHTML='<td><b>'+esc(t.title)+'</b></td><td style="font-family:\'Share Tech Mono\',monospace;font-size:12px;color:var(--teal)">'+esc(t.subject)+'</td><td>'+esc(t.type)+'</td><td><span class="tag t-pr-'+t.priority+'">'+t.priority+'</span></td><td>'+esc(t.status)+'</td><td>'+esc(t.due||'—')+'</td>';
     tb.appendChild(tr);
   });
