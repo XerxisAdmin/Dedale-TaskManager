@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 fill=%27%23cc2244%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Arial%27 font-size=%2720%27 font-weight=%27bold%27 fill=%27white%27 text-anchor=%27middle%27%3ED%3C/text%3E%3C/svg%3E">
-<title>Dedale Task Manager — IT Operations</title>
+<title>IT Task Manager — IT Operations</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <script src="msal-browser.min.js"></script>
@@ -139,7 +139,7 @@ label{display:block;font-family:'Share Tech Mono',monospace;font-size:11px;lette
 
 <div id="login-screen">
   <div class="login-box">
-    <h1>DEDALE <span class="brand-accent">TASK MANAGER</span></h1>
+    <h1>IT <span class="brand-accent">TASK MANAGER</span></h1>
     <p>INTEL-TM // IT OPERATIONS</p>
     <button class="btn btn-primary" onclick="signIn()">Sign in with Microsoft</button>
     <div id="login-status" style="margin-top:16px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text3)"></div>
@@ -151,7 +151,7 @@ label{display:block;font-family:'Share Tech Mono',monospace;font-size:11px;lette
   <aside class="sidebar">
     <div class="side-brand">
       <div class="logo"><div class="logo-mark">D</div>
-        <h1>DEDALE<span>INTELLIGENCE</span></h1></div>
+        <h1>IT TASK<span>MANAGER</span></h1></div>
       <div class="sub">INTEL-TM // IT TASK MANAGER</div>
     </div>
     <div class="side-section">OVERVIEW</div>
@@ -172,7 +172,7 @@ label{display:block;font-family:'Share Tech Mono',monospace;font-size:11px;lette
     <div class="topbar">
       <div class="page-title">
         <h2 id="page-h2">DASHBOARD</h2>
-        <div class="crumb">DEDALE INTELLIGENCE // IT OPERATIONS</div>
+        <div class="crumb">IT TASK MANAGER // IT OPERATIONS</div>
       </div>
       <div class="topbar-right">
         <button class="btn btn-primary" onclick="openTaskModal()">+ Add Task</button>
@@ -627,6 +627,12 @@ function openDetail(id){
       '<span class="tag t-pr-'+t.priority+'">'+t.priority+'</span>'+
       '<span class="tag">'+esc(t.status)+'</span>'+dueTag+
     '</div>'+
+    '<label>Status</label><div class="dt-field" style="display:flex;gap:8px;align-items:center">'+
+      '<select id="dt-status" style="flex:1">'+
+        ['To Do','In Progress','Waiting','Done'].map(s=>'<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+s+'</option>').join('')+
+      '</select>'+
+      '<button class="btn btn-primary btn-sm" onclick="changeStatus(\''+t.id+'\')">✓ Update</button>'+
+    '</div>'+
     (t.subject?'<label>Subject / Employee</label><div class="dt-field" style="color:var(--teal);font-family:\'Share Tech Mono\',monospace">'+esc(t.subject)+'</div>':'')+
     '<label>Details</label><div class="dt-field">'+(t.details?esc(t.details):'<span style="color:var(--text3)">—</span>')+'</div>'+
     subHtml+
@@ -638,6 +644,15 @@ function openDetail(id){
   document.getElementById('detail-modal').classList.add('open');
 }
 function closeDetail(){document.getElementById('detail-modal').classList.remove('open');detailId=null;}
+async function changeStatus(id){
+  const sel=document.getElementById('dt-status');if(!sel)return;
+  const newStatus=sel.value;
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  if(t.status===newStatus){toast('Status unchanged');return;}
+  await setTaskStatus(id,newStatus);
+  if(tasks.find(x=>x.id===id))openDetail(id);
+  toast('Status → '+newStatus+' ✓');
+}
 async function addNote(){
   if(!hasNotesLog){toast('Add the NotesLog column in SharePoint first (List Settings → Create column)',true);return;}
   const inp=document.getElementById('dt-newnote');const txt=inp.value.trim();if(!txt||!detailId)return;
