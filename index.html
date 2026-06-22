@@ -122,7 +122,7 @@ label{display:block;font-family:'Share Tech Mono',monospace;font-size:11px;lette
 .note-item{padding:8px 10px;border-left:2px solid var(--teal);background:var(--surface);margin-bottom:6px}
 .note-item:last-child{margin-bottom:0}
 .note-meta{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--text3);text-transform:uppercase}
-.note-text{font-size:14px;line-height:1.45;margin-top:3px;white-space:pre-wrap}
+.note-text{font-size:14px;line-height:1.45;margin-top:3px;white-space:pre-wrap;padding-right:22px}
 .im-card{background:var(--navy-mid);border:1px solid var(--border);border-left:3px solid var(--teal);padding:11px 13px;margin-bottom:8px}
 .im-card.off{opacity:.4;border-left-color:var(--text3)}
 .im-row{display:flex;gap:12px;align-items:flex-start}
@@ -618,7 +618,7 @@ function openDetail(id){
       t.subtasks.map((s,i)=>'<li class="'+(s.done?'done':'')+'"><input type="checkbox" '+(s.done?'checked':'')+' onchange="toggleSubtask(\''+t.id+'\','+i+');setTimeout(()=>openDetail(\''+t.id+'\'),300)"><span class="st-label" style="font-size:14px">'+esc(s.label)+'</span></li>').join('')+'</ul>';
   }
   const notesHtml=(t.notes&&t.notes.length)?
-    t.notes.slice().reverse().map(n=>'<div class="note-item"><div class="note-meta">'+esc(n.ts)+'</div><div class="note-text">'+esc(n.text)+'</div></div>').join(''):
+    t.notes.slice().reverse().map((n,ri)=>{const realIdx=t.notes.length-1-ri;return '<div class="note-item" style="position:relative"><div class="note-meta">'+esc(n.ts)+'</div><div class="note-text">'+esc(n.text)+'</div><button title="Delete note" onclick="deleteNote('+realIdx+')" style="position:absolute;top:6px;right:6px;background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:2px 5px;border-radius:3px" onmouseover="this.style.color=\'var(--accent)\';this.style.background=\'rgba(196,18,48,0.12)\'" onmouseout="this.style.color=\'var(--text3)\';this.style.background=\'transparent\'">✕</button></div>';}).join(''):
     '<div class="empty" style="text-align:left;padding:8px 0">No notes yet.</div>';
   document.getElementById('dt-body').innerHTML=
     '<div class="dt-tags">'+
@@ -665,6 +665,19 @@ async function addNote(){
       {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({NotesLog:JSON.stringify(t.notes)})});
     openDetail(t.id);toast('Note added ✓');
   }catch(e){console.error(e);toast('Note save failed',true);}
+}
+async function deleteNote(idx){
+  if(!detailId)return;
+  const t=tasks.find(x=>x.id===detailId);if(!t||!t.notes||!t.notes[idx])return;
+  const preview=t.notes[idx].text.length>50?t.notes[idx].text.slice(0,50)+'…':t.notes[idx].text;
+  if(!confirm('Delete this note?\n\n"'+preview+'"'))return;
+  const backup=t.notes.slice();
+  t.notes.splice(idx,1);
+  try{
+    await gfetch(GRAPH+'/sites/'+siteId+'/lists/'+SP_LIST_NAME+'/items/'+t.id+'/fields',
+      {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({NotesLog:JSON.stringify(t.notes)})});
+    openDetail(t.id);toast('Note deleted ✓');
+  }catch(e){console.error(e);t.notes=backup;openDetail(t.id);toast('Note delete failed',true);}
 }
 
 
