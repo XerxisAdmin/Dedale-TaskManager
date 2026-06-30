@@ -61,7 +61,8 @@ label{display:block;font-family:'Share Tech Mono',monospace;font-size:11px;lette
 .btn-ghost{background:none;border:none;color:var(--text3);font-size:11px;letter-spacing:1px}.btn-ghost:hover{color:var(--accent)}
 /* ---- Dashboard stats ---- */
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:26px}
-.stat{background:var(--surface);border:1px solid var(--border);padding:18px 20px;box-shadow:var(--shadow-sm)}
+.stat{background:var(--surface);border:1px solid var(--border);padding:18px 20px;box-shadow:var(--shadow-sm);transition:border-color .15s,transform .1s}
+.stat[onclick]:hover{border-color:var(--teal);transform:translateY(-2px)}
 .stat .k{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--text2);text-transform:uppercase}
 .stat .v{font-family:'Orbitron',monospace;font-size:30px;font-weight:700;margin-top:6px}
 .stat.s-todo .v{color:var(--blue-light)}.stat.s-prog .v{color:var(--teal)}.stat.s-wait .v{color:var(--gold)}.stat.s-done .v{color:var(--green)}.stat.s-due .v{color:var(--orange)}.stat.s-over .v{color:var(--accent)}
@@ -186,12 +187,12 @@ label{display:block;font-family:'Share Tech Mono',monospace;font-size:11px;lette
       <!-- DASHBOARD -->
       <section id="view-dashboard">
         <div class="stat-grid">
-          <div class="stat s-todo"><div class="k">To Do</div><div class="v" id="st-todo">0</div></div>
-          <div class="stat s-prog"><div class="k">In Progress</div><div class="v" id="st-prog">0</div></div>
-          <div class="stat s-wait"><div class="k">Waiting</div><div class="v" id="st-wait">0</div></div>
-          <div class="stat s-due"><div class="k">Due Today</div><div class="v" id="st-due">0</div></div>
-          <div class="stat s-over"><div class="k">Overdue</div><div class="v" id="st-over">0</div></div>
-          <div class="stat s-done"><div class="k">Done (7d)</div><div class="v" id="st-done">0</div></div>
+          <div class="stat s-todo" style="cursor:pointer" onclick="openStatList('todo')" title="View tasks"><div class="k">To Do</div><div class="v" id="st-todo">0</div></div>
+          <div class="stat s-prog" style="cursor:pointer" onclick="openStatList('prog')" title="View tasks"><div class="k">In Progress</div><div class="v" id="st-prog">0</div></div>
+          <div class="stat s-wait" style="cursor:pointer" onclick="openStatList('wait')" title="View tasks"><div class="k">Waiting</div><div class="v" id="st-wait">0</div></div>
+          <div class="stat s-due" style="cursor:pointer" onclick="openStatList('due')" title="View tasks"><div class="k">Due Today</div><div class="v" id="st-due">0</div></div>
+          <div class="stat s-over" style="cursor:pointer" onclick="openStatList('over')" title="View tasks"><div class="k">Overdue</div><div class="v" id="st-over">0</div></div>
+          <div class="stat s-done" style="cursor:pointer" onclick="openStatList('done7')" title="View tasks"><div class="k">Done (7d)</div><div class="v" id="st-done">0</div></div>
         </div>
         <table class="tbl"><thead><tr><th>Task</th><th>Subject</th><th>Type</th><th>Priority</th><th>Status</th><th>Due</th></tr></thead>
         <tbody id="recent-rows"><tr><td colspan="6" class="empty">No tasks yet — create your first one.</td></tr></tbody></table>
@@ -708,6 +709,52 @@ function renderStats(){
   });
   setText('st-todo',c.todo);setText('st-prog',c.prog);setText('st-wait',c.wait);
   setText('st-done',c.done7);setText('st-due',c.due);setText('st-over',c.over);
+}
+function openStatList(cat){
+  const td=todayStr();
+  const wk=new Date(Date.now()-7*86400000).toISOString().substring(0,10);
+  const defs={
+    todo:{label:'To Do',color:'var(--blue)',fn:t=>t.status==='To Do'},
+    prog:{label:'In Progress',color:'var(--teal)',fn:t=>t.status==='In Progress'},
+    wait:{label:'Waiting',color:'var(--gold)',fn:t=>t.status==='Waiting'},
+    due:{label:'Due Today',color:'var(--gold)',fn:t=>t.status!=='Done'&&t.due===td},
+    over:{label:'Overdue',color:'var(--accent)',fn:t=>t.status!=='Done'&&t.due&&t.due<td},
+    done7:{label:'Done (last 7 days)',color:'var(--green)',fn:t=>t.status==='Done'&&t.completed>=wk}
+  };
+  const d=defs[cat];if(!d)return;
+  const list=tasks.filter(d.fn);
+  const old=document.getElementById('stat-list-overlay');if(old)old.remove();
+  const overlay=document.createElement('div');overlay.id='stat-list-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(10,11,20,0.85);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+  const rows=list.length?list.map(t=>{
+    const overdue=t.due&&t.due<td&&t.status!=='Done';
+    const dueTxt=t.due?('<span class="tag '+(overdue?'t-over':'t-due')+'">'+(overdue?'OVERDUE ':'DUE ')+esc(t.due)+'</span>'):'';
+    return '<div data-task-id="'+t.id+'" style="padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s" onmouseover="this.style.background=\'rgba(46,196,182,0.08)\'" onmouseout="this.style.background=\'transparent\'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'
+        +'<div style="font-size:14px;font-weight:600;color:var(--text)">'+esc(t.title)+'</div>'
+        +'<svg style="width:14px;height:14px;flex-shrink:0;opacity:0.4;margin-top:2px" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>'
+      +'</div>'
+      +(t.subject?'<div style="font-size:12px;color:var(--teal);font-family:\'Share Tech Mono\',monospace;margin-top:3px">'+esc(t.subject)+'</div>':'')
+      +'<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">'
+        +'<span class="tag t-hr">'+esc(t.dept)+'</span><span class="tag">'+esc(t.type)+'</span><span class="tag t-pr-'+t.priority+'">'+esc(t.priority)+'</span>'+dueTxt
+      +'</div>'
+    +'</div>';
+  }).join(''):'<div style="padding:30px 14px;text-align:center;color:var(--text3);font-family:\'Share Tech Mono\',monospace;font-size:13px">No tasks in this category.</div>';
+  overlay.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);width:560px;max-width:92vw;max-height:82vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);position:relative">'
+    +'<div style="height:3px;background:'+d.color+'"></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border)">'
+      +'<div><div style="font-size:16px;font-weight:700;color:'+d.color+';font-family:\'Orbitron\',monospace;text-transform:uppercase;letter-spacing:1px">'+d.label+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);font-family:\'Share Tech Mono\',monospace;margin-top:3px">'+list.length+' task'+(list.length===1?'':'s')+' · click any to open</div></div>'
+      +'<button onclick="document.getElementById(\'stat-list-overlay\').remove()" style="background:var(--surface2);border:1px solid var(--border);padding:6px 14px;font-size:11px;cursor:pointer;color:var(--text2);font-family:\'Share Tech Mono\',monospace">✕ Close</button>'
+    +'</div>'
+    +'<div style="overflow-y:auto">'+rows+'</div>'
+  +'</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',function(ev){
+    if(ev.target===this){this.remove();return;}
+    const row=ev.target.closest('[data-task-id]');
+    if(row){this.remove();openDetail(row.getAttribute('data-task-id'));}
+  });
 }
 function makeCard(t){
   const td=todayStr();
